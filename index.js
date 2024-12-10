@@ -14,7 +14,7 @@ const port = process.env.PORT || 5000;
 app.use(cors({
     origin: [
         'http://localhost:5173',
-        // 'https://blogsassigmentmarfa.vercel.app',
+        'https://blogsassigmentmarfa.vercel.app',
     ],
     credentials: true
 }));
