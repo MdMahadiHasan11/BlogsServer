@@ -15,6 +15,7 @@ app.use(cors({
     origin: [
         'http://localhost:5173',
         'https://blogsassigmentmarfa.vercel.app',
+        'https://blogs-server-gamma.vercel.app'
     ],
     credentials: true
 }));
@@ -40,6 +41,7 @@ async function run() {
 
         const BlogCollection = client.db('assignmentDB').collection('allBlogs');
 
+        const BannerCollection = client.db('assignmentDB').collection('allBanner');
         // All medicines
         app.get('/allBlogs', async (req, res) => {
             try {
@@ -54,10 +56,10 @@ async function run() {
         });
         app.get('/allBlogs', async (req, res) => {
             const { sort = 'Ascending' } = req.query; // Get sort direction from query params (default to 'Ascending')
-            
+
             // Sort based on the date field
             const sortOrder = sort === 'Ascending' ? 1 : -1; // MongoDB uses 1 for ascending and -1 for descending
-        
+
             try {
                 const blogs = await Blog.find({}).sort({ date: sortOrder }); // Assuming your Blog model has a `date` field
                 res.json(blogs);
@@ -65,8 +67,32 @@ async function run() {
                 console.error("Error fetching blogs:", err);
                 res.status(500).send("Server error");
             }
+
+
+            // Route to fetch all banners
+            app.get('/allBanner', async (req, res) => {
+                try {
+                    const result = await BannerCollection.find().toArray();
+                    res.send(result);
+                } catch (error) {
+                    console.error(error);
+                    res.status(500).send("Internal Server Error");
+                }
+            });
+
+            // Route to add a banner
+            app.post('/allBanner', async (req, res) => {
+                try {
+                    const bannerData = req.body;
+                    const result = await BannerCollection.insertOne(bannerData);
+                    res.status(201).send(result);
+                } catch (error) {
+                    console.error(error);
+                    res.status(500).send("Internal Server Error");
+                }
+            });
         });
-        
+
 
         // category  load 
         app.get('/blogs/:category', async (req, res) => {
