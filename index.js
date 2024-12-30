@@ -35,72 +35,52 @@ const client = new MongoClient(uri, {
 
 async function run() {
     try {
-        // Connect the client to the server	(optional starting in v4.7)
-
+        // Connect the client to the server (optional starting in v4.7)
         // await client.connect();
 
         const BlogCollection = client.db('assignmentDB').collection('allBlogs');
-
         const BannerCollection = client.db('assignmentDB').collection('allBanner');
-        // All medicines
+
+        // All Blogs Route
         app.get('/allBlogs', async (req, res) => {
             try {
                 const result = await BlogCollection.find().toArray();
-                // console.log("Result:", result); // Debugging
-
                 res.send(result);
             } catch (error) {
                 console.error(error);
                 res.status(500).send("Internal Server Error");
             }
         });
-        app.get('/allBlogs', async (req, res) => {
-            const { sort = 'Ascending' } = req.query; // Get sort direction from query params (default to 'Ascending')
 
-            // Sort based on the date field
-            const sortOrder = sort === 'Ascending' ? 1 : -1; // MongoDB uses 1 for ascending and -1 for descending
-
+        // All Banners Route
+        app.get('/allBanner', async (req, res) => {
             try {
-                const blogs = await Blog.find({}).sort({ date: sortOrder }); // Assuming your Blog model has a `date` field
-                res.json(blogs);
-            } catch (err) {
-                console.error("Error fetching blogs:", err);
-                res.status(500).send("Server error");
+                const result = await BannerCollection.find().toArray();
+                res.send(result);
+            } catch (error) {
+                console.error("Error fetching banners:", error);
+                res.status(500).send("Internal Server Error");
             }
-
-
-            // Route to fetch all banners
-            app.get('/allBanner', async (req, res) => {
-                try {
-                    const result = await BannerCollection.find().toArray();
-                    res.send(result);
-                } catch (error) {
-                    console.error(error);
-                    res.status(500).send("Internal Server Error");
-                }
-            });
-
-            // Route to add a banner
-            app.post('/allBanner', async (req, res) => {
-                try {
-                    const bannerData = req.body;
-                    const result = await BannerCollection.insertOne(bannerData);
-                    res.status(201).send(result);
-                } catch (error) {
-                    console.error(error);
-                    res.status(500).send("Internal Server Error");
-                }
-            });
         });
 
+        // Add a Banner Route
+        app.post('/allBanner', async (req, res) => {
+            try {
+                const bannerData = req.body;
+                const result = await BannerCollection.insertOne(bannerData);
+                res.status(201).send(result);
+            } catch (error) {
+                console.error("Error adding banner:", error);
+                res.status(500).send("Internal Server Error");
+            }
+        });
 
-        // category  load 
+        // Category Load
         app.get('/blogs/:category', async (req, res) => {
             try {
                 const category = req.params.category;
-                const query = { category: category }
+                const query = { category: category };
                 const result = await BlogCollection.find(query).toArray();
-                // console.log("Result:", result); // Debugging
                 res.send(result);
             } catch (error) {
                 console.error(error);
@@ -108,20 +88,16 @@ async function run() {
             }
         });
 
-
-        // Server-side (Express)
-        // Server-side (Express)
+        // Search Route
         app.get('/allSearch/:key', async (req, res) => {
             try {
                 const searchKey = req.params.key.trim(); // Trim any unnecessary whitespace
-                console.log('Search key:', searchKey);  // Debug: Check what key is being searched for
+                console.log('Search key:', searchKey); // Debug: Check what key is being searched for
 
-                // Validate searchKey
                 if (!searchKey) {
                     return res.status(400).json({ message: 'Search key is required and cannot be empty.' });
                 }
 
-                // Query the database using regex for case-insensitive search
                 const result = await BlogCollection.find({
                     "$or": [
                         { category: { $regex: searchKey, $options: 'i' } },
@@ -131,38 +107,33 @@ async function run() {
                     ]
                 }).toArray();
 
-                // If no results found, send an appropriate message
                 if (result.length === 0) {
                     return res.status(404).json({ message: 'No results found matching the search key.' });
                 }
 
-                // Send the result as a response
                 res.status(200).json({ data: result });
-
             } catch (err) {
                 console.error('Error during search:', err);
                 res.status(500).json({ message: 'Server error occurred while processing your search.' });
             }
         });
 
-
-
-        // Send a ping to confirm a successful connection
-        // await client.db("admin").command({ ping: 1 });
+        // Ping to confirm connection
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
         // Ensures that the client will close when you finish/error
         // await client.close();
     }
 }
+
 run().catch(console.dir);
 
-
-
+// Root Route
 app.get('/', (req, res) => {
-    res.send('Project-AssignmentTest is running')
-})
+    res.send('Project-AssignmentTest is running');
+});
 
+// Start Server
 app.listen(port, () => {
-    console.log(`Project-AssignmentTest is running on port ${port}`)
-})
+    console.log(`Project-AssignmentTest is running on port ${port}`);
+});
