@@ -1,16 +1,19 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config()
+require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const stripe = require('stripe')(process.env.STRIPE_KEY);
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 
-// auto
+// MongoDB
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-
 
 const app = express();
 const port = process.env.PORT || 5000;
-// // middleware
+
+// Middleware
 app.use(cors({
     origin: [
         'http://localhost:5173',
@@ -21,10 +24,9 @@ app.use(cors({
 }));
 app.use(express.json());
 
-
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.vdildbx.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
-// Create a MongoClient with a MongoClientOptions object to set the Stable API version
+// Create a MongoClient
 const client = new MongoClient(uri, {
     serverApi: {
         version: ServerApiVersion.v1,
@@ -35,13 +37,56 @@ const client = new MongoClient(uri, {
 
 async function run() {
     try {
-        // Connect the client to the server (optional starting in v4.7)
-        // await client.connect();
-
         const BlogCollection = client.db('assignmentDB').collection('allBlogs');
         const BannerCollection = client.db('assignmentDB').collection('allBanner');
 
-        // All Blogs Route
+        // Ensure the directory exists
+        const imagesDirectory = path.join(__dirname, "../public/images");
+        if (!fs.existsSync(imagesDirectory)) {
+            fs.mkdirSync(imagesDirectory, { recursive: true });
+        }
+
+        // Multer storage configuration
+        const storage = multer.diskStorage({
+            destination: (req, file, cb) => {
+                cb(null, imagesDirectory);
+            },
+            filename: (req, file, cb) => {
+                const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+                const extension = path.extname(file.originalname);
+                cb(null, file.fieldname + "-" + uniqueSuffix + extension);
+            },
+        });
+
+        // Multer upload middleware
+        const upload = multer({ storage });
+
+        // File upload route
+        app.post("/upload", upload.single("image"), (req, res) => {
+            if (!req.file) {
+                return res.status(400).send("No file uploaded.");
+            }
+            res.status(200).send("File uploaded successfully.");
+        });
+
+        // Add news
+        app.post("/api/news", async (req, res) => {
+            const { news } = req.body;
+
+            if (!news || typeof news !== 'object') {
+                return res.status(400).send({ error: "Invalid news data." });
+            }
+
+            try {
+                const result = await BannerCollection.insertOne(news);
+                res.status(201).send({ message: "News added successfully.", data: result });
+            } catch (err) {
+                console.error("Error adding news:", err);
+                res.status(500).send({ error: "Failed to add news." });
+            }
+        });
+
+        // Get all blogs
         app.get('/allBlogs', async (req, res) => {
             try {
                 const result = await BlogCollection.find().toArray();
@@ -52,7 +97,7 @@ async function run() {
             }
         });
 
-        // All Banners Route
+        // Get all banners
         app.get('/allBanner', async (req, res) => {
             try {
                 const result = await BannerCollection.find().toArray();
@@ -63,7 +108,7 @@ async function run() {
             }
         });
 
-        // Add a Banner Route
+        // Add a banner
         app.post('/allBanner', async (req, res) => {
             try {
                 const bannerData = req.body;
@@ -75,7 +120,7 @@ async function run() {
             }
         });
 
-        // Category Load
+        // Get blogs by category
         app.get('/blogs/:category', async (req, res) => {
             try {
                 const category = req.params.category;
@@ -88,11 +133,11 @@ async function run() {
             }
         });
 
-        // Search Route
+        // Search route
         app.get('/allSearch/:key', async (req, res) => {
             try {
-                const searchKey = req.params.key.trim(); // Trim any unnecessary whitespace
-                console.log('Search key:', searchKey); // Debug: Check what key is being searched for
+                const searchKey = req.params.key.trim();
+                console.log('Search key:', searchKey);
 
                 if (!searchKey) {
                     return res.status(400).json({ message: 'Search key is required and cannot be empty.' });
@@ -118,11 +163,9 @@ async function run() {
             }
         });
 
-        // Ping to confirm connection
         console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
-        // Ensures that the client will close when you finish/error
-        // await client.close();
+        // Do not close the client to keep the server running
     }
 }
 
